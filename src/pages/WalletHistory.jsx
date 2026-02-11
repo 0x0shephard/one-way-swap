@@ -3,39 +3,19 @@ import { useAccount } from "wagmi";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import Sidebar from "../components/layout/Sidebar";
 import { formatNumber } from "../utils/mockData";
-import { formatUsdcBalance, formatPkrBalance, USDC_DECIMALS, PKR_DECIMALS, PRICE_FEED_DECIMALS } from "../utils/contracts";
-import { useUsdcBalance, usePkrBalance, useExchangeRate, useSwapHistory } from "../hooks/useContracts";
+import { formatUsdcBalance, formatPkrBalance } from "../utils/contracts";
+import { useUsdcBalance, usePkrBalance, useExchangeRate } from "../hooks/useContracts";
 
 export default function WalletHistory() {
   const { address } = useAccount();
   const { raw: rawUsdcBalance, formatted: usdcBalanceNum } = useUsdcBalance();
   const { raw: rawPkrBalance, formatted: pkrBalanceNum } = usePkrBalance();
   const { rate: exchangeRate } = useExchangeRate();
-  const { swaps, isLoading: swapsLoading } = useSwapHistory(address);
 
   const usdcDisplay = formatUsdcBalance(rawUsdcBalance);
   const pkrDisplay = formatPkrBalance(rawPkrBalance);
   const pkrInUsdc = exchangeRate > 0 ? pkrBalanceNum / exchangeRate : 0;
   const usdcInPkr = usdcBalanceNum * exchangeRate;
-
-  // Format swap data for display
-  const formatSwapForDisplay = (swap) => {
-    const usdcSent = Number(swap.usdcIn) / 10 ** USDC_DECIMALS;
-    const pkrReceived = Number(swap.pkrOut) / 10 ** PKR_DECIMALS;
-    const rate = Number(swap.rate) / 10 ** PRICE_FEED_DECIMALS;
-    
-    return {
-      usdcSent,
-      dpkrReceived: pkrReceived,
-      chainlinkRate: rate,
-      status: "Success",
-      txHash: swap.transactionHash,
-      date: new Date().toLocaleDateString(), // You could fetch block timestamp for accurate date
-      time: new Date().toLocaleTimeString(),
-    };
-  };
-
-  const formattedSwaps = swaps.map(formatSwapForDisplay);
 
   return (
     <div className="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen font-display flex">
@@ -46,18 +26,14 @@ export default function WalletHistory() {
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
           <div>
             <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-1">
-              Wallet & History
+              Wallet Balances
             </h1>
             <p className="text-text-muted text-sm flex items-center gap-2">
-              <span className="material-icons text-xs">schedule</span>
-              Last updated: {new Date().toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit", timeZoneName: "short" })}
+              <span className="material-icons text-xs">account_balance_wallet</span>
+              View your USDC and dPKR token balances
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <button className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border-dark bg-card-dark text-white hover:bg-slate-800 transition-all">
-              <span className="material-icons text-sm">download</span>
-              <span>Export CSV</span>
-            </button>
             <Link
               to="/swap"
               className="bg-primary hover:bg-primary/90 text-background-dark font-bold px-6 py-2 rounded-lg transition-all shadow-lg shadow-primary/20"
@@ -67,22 +43,6 @@ export default function WalletHistory() {
             <ConnectButton />
           </div>
         </header>
-
-        {/* Alert Banner */}
-        <div className="mb-8 p-4 rounded-xl bg-primary/5 border border-primary/20 flex items-start gap-4">
-          <span className="material-icons text-primary mt-0.5">info</span>
-          <div>
-            <h4 className="font-semibold text-primary text-sm">
-              One-Way Remittance Policy
-            </h4>
-            <p className="text-text-muted text-sm leading-relaxed">
-              RemitLink currently operates as a one-way bridge for migrant
-              workers and remitters. You can swap USDC to dPKR, but reverse
-              swaps (dPKR to USDC) are restricted to authorized liquidity
-              providers only.
-            </p>
-          </div>
-        </div>
 
         {/* Balance Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
@@ -157,141 +117,6 @@ export default function WalletHistory() {
               <span className="text-text-muted mt-1">
                 ≈ {formatNumber(pkrInUsdc)} USDC
               </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Transaction Table */}
-        <div className="bg-card-dark border border-border-dark rounded-xl overflow-hidden shadow-2xl">
-          <div className="p-6 border-b border-border-dark flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="material-icons text-text-muted">
-                receipt_long
-              </span>
-              <h2 className="text-xl font-bold text-white">Recent Activity</h2>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-text-muted flex items-center gap-1">
-                <span className="material-icons text-[14px]">bolt</span>
-                Powered by Chainlink Data Feeds
-              </span>
-            </div>
-          </div>
-
-          <div className="overflow-x-auto custom-scrollbar">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-background-dark/30">
-                  <th className="px-6 py-4 text-xs font-bold uppercase tracking-widest text-text-muted">
-                    Date & Time
-                  </th>
-                  <th className="px-6 py-4 text-xs font-bold uppercase tracking-widest text-text-muted text-right">
-                    USDC Sent
-                  </th>
-                  <th className="px-6 py-4 text-xs font-bold uppercase tracking-widest text-text-muted text-right">
-                    dPKR Received
-                  </th>
-                  <th className="px-6 py-4 text-xs font-bold uppercase tracking-widest text-text-muted text-center">
-                    Chainlink Rate
-                  </th>
-                  <th className="px-6 py-4 text-xs font-bold uppercase tracking-widest text-text-muted">
-                    Status
-                  </th>
-                  <th className="px-6 py-4 text-xs font-bold uppercase tracking-widest text-text-muted text-right">
-                    Tx ID
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border-dark">
-                {swapsLoading ? (
-                  <tr>
-                    <td colSpan="6" className="px-6 py-8 text-center">
-                      <div className="flex items-center justify-center gap-2">
-                        <span className="material-icons animate-spin text-primary">refresh</span>
-                        <span className="text-text-muted">Loading transaction history...</span>
-                      </div>
-                    </td>
-                  </tr>
-                ) : formattedSwaps.length === 0 ? (
-                  <tr>
-                    <td colSpan="6" className="px-6 py-8 text-center">
-                      <div className="flex flex-col items-center gap-2">
-                        <span className="material-icons text-4xl text-text-muted opacity-50">receipt_long</span>
-                        <span className="text-text-muted">No transactions yet</span>
-                        <Link to="/swap" className="text-primary text-sm hover:underline">
-                          Make your first swap →
-                        </Link>
-                      </div>
-                    </td>
-                  </tr>
-                ) : (
-                  formattedSwaps.map((tx, i) => (
-                    <tr
-                      key={i}
-                      className="hover:bg-primary/5 transition-colors"
-                    >
-                      <td className="px-6 py-4">
-                        <p className="text-sm font-medium text-white">
-                          {tx.date}
-                        </p>
-                        <p className="text-xs text-text-muted">{tx.time}</p>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <p className="text-sm font-bold text-white">
-                          -{formatNumber(tx.usdcSent)}
-                        </p>
-                        <p className="text-[10px] text-text-muted">USDC</p>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <p className="text-sm font-bold text-primary">
-                          +{formatNumber(tx.dpkrReceived)}
-                        </p>
-                        <p className="text-[10px] text-text-muted">dPKR</p>
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        <span className="text-xs font-mono bg-background-dark px-2 py-1 rounded text-text-muted">
-                          1:{tx.chainlinkRate.toFixed(2)}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-1.5 text-primary">
-                          <span className="material-icons text-sm">
-                            check_circle
-                          </span>
-                          <span className="text-xs font-bold">{tx.status}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <a
-                          href={`https://sepolia.etherscan.io/tx/${tx.txHash}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-primary/70 hover:text-primary transition-colors"
-                          title="View on Etherscan"
-                        >
-                          <span className="material-icons text-sm">
-                            open_in_new
-                          </span>
-                        </a>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="p-4 border-t border-border-dark flex items-center justify-between">
-            <span className="text-xs text-text-muted">
-              Showing {formattedSwaps.length} of {formattedSwaps.length} transactions
-            </span>
-            <div className="flex gap-2">
-              <button className="w-8 h-8 flex items-center justify-center rounded border border-border-dark bg-background-dark/30 text-text-muted cursor-not-allowed">
-                <span className="material-icons text-sm">chevron_left</span>
-              </button>
-              <button className="w-8 h-8 flex items-center justify-center rounded border border-border-dark bg-card-dark text-white hover:border-primary">
-                <span className="material-icons text-sm">chevron_right</span>
-              </button>
             </div>
           </div>
         </div>
